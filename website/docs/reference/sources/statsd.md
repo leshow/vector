@@ -93,10 +93,12 @@ following structure:
 
 ```json
 {
-  "counter": {
-    "name": "login.invocations",
-    "val": 1,
-    "timestamp": "2019-05-02T12:22:46.658503Z" // current time / time ingested
+  "name": "login.invocations",
+  "kind": "incremental",
+  "timestamp": "2019-05-02T12:22:46.658503Z" // current time / time ingested
+  "value": {
+    "type": "counter",
+    "value": 1.0
   }
 }
 ```
@@ -116,10 +118,12 @@ following structure:
 
 ```json
 {
-  "gauge": {
-    "name": "gas_tank",
-    "val": 0.5,
-    "timestamp": "2019-05-02T12:22:46.658503Z" // current time / time ingested
+  "name": "gas_tank",
+  "kind": "absolute",
+  "timestamp": "2019-05-02T12:22:46.658503Z" // current time / time ingested
+  "value": {
+    "type": "gauge",
+    "value": 0.5
   }
 }
 ```
@@ -139,10 +143,12 @@ following structure:
 
 ```json
 {
-  "set": {
-    "name": "unique_users",
-    "val": 1,
-    "timestamp": "2019-05-02T12:22:46.658503Z" // current time / time ingested
+  "name": "unique_users",
+  "kind": "incremental",
+  "timestamp": "2019-05-02T12:22:46.658503Z" // current time / time ingested
+  "value": {
+    "type": "set",
+    "values": ["foo"]
   }
 }
 ```
@@ -162,10 +168,13 @@ following structure:
 
 ```json
 {
-  "timer": {
-    "name": "login.time",
-    "val": 22,
-    "timestamp": "2019-05-02T12:22:46.658503Z" // current time / time ingested
+  "name": "login.time",
+  "kind": "incremental",
+  "timestamp": "2019-05-02T12:22:46.658503Z" // current time / time ingested
+  "value": {
+    "type": "distribution",
+    "values": [0.022], // ms become seconds
+    "sample_rates": [1.0]
   }
 }
 ```

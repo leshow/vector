@@ -193,15 +193,21 @@ Given the following input:
 ```json
 [
   {
-    "histogram": {
-      "name": "response_time_s",
-      "val": 0.243
+    "name": "response_time_s",
+    "kind": "incremental",
+    "value": {
+      "type": "distribution",
+      "values": [0.243],
+      "sample_rates": [1.0]
     }
   },
   {
-    "histogram": {
-      "name": "response_time_s",
-      "val": 0.546
+    "name": "response_time_s",
+    "kind": "incremental",
+    "value": {
+      "type": "distribution",
+      "values": [0.546],
+      "sample_rates": [1.0]
     }
   }
 ]
@@ -237,15 +243,19 @@ Given the following input:
 ```json
 [
   {
-    "counter": {
-      "name": "logins",
-      "val": 1
+    "name": "logins",
+    "kind": "incremental",
+    "value": {
+      "type": "counter",
+      "value": 1.0
     }
   },
   {
-    "counter": {
-      "name": "logins",
-      "val": 3
+    "name": "logins",
+    "kind": "incremental",
+    "value": {
+      "type": "counter",
+      "value": 3.0
     }
   }
 ]
@@ -269,17 +279,19 @@ Given the following input:
 ```json
 [
   {
-    "gauge": {
-      "name": "memory_rss",
-      "val": 250,
-      "direction": "plus"
+    "name": "memory_rss",
+    "kind": "incremental",
+    "value": {
+      "type": "gauge",
+      "value": 250.0
     }
   },
   {
-    "gauge": {
-      "name": "memory_rss",
-      "val": 25
-      "direction": "minus"
+    "name": "memory_rss",
+    "kind": "incremental",
+    "value": {
+      "type": "gauge",
+      "value": -25.0
     }
   }
 ]
