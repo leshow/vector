@@ -27,7 +27,7 @@ import Tabs from '@theme/Tabs';
 <Tabs
   block={true}
   defaultValue="counter"
-  values={[{"label":"counter","value":"counter"},{"label":"gauge","value":"gauge"},{"label":"histogram","value":"histogram"},{"label":"set","value":"set"}]}>
+  values={[{"label":"counter","value":"counter"},{"label":"distribution","value":"distribution"},{"label":"gauge","value":"gauge"},{"label":"set","value":"set"}]}>
 
 import TabItem from '@theme/TabItem';
 
@@ -35,10 +35,31 @@ import TabItem from '@theme/TabItem';
 
 ```javascript
 {
+  "kind": "absolute",
   "name": "login.count",
   "host": "my.host.com",
   "timestamp": "2019-11-01T21:15:47+00:00",
-  "val": 10.2
+  "type": "counter",
+  "value": 10.2
+}
+```
+
+</TabItem>
+<TabItem value="distribution">
+
+```javascript
+{
+  "kind": "absolute",
+  "name": "duration_ms",
+  "host": "my.host.com",
+  "timestamp": "2019-11-01T21:15:47+00:00",
+  "type": "distribution",
+  "values": [
+    2.6
+  ],
+  "sample_rates": [
+    1
+  ]
 }
 ```
 
@@ -47,24 +68,12 @@ import TabItem from '@theme/TabItem';
 
 ```javascript
 {
-  "direction": "plus",
+  "kind": "absolute",
   "name": "memory_rss",
   "host": "my.host.com",
   "timestamp": "2019-11-01T21:15:47+00:00",
-  "val": 554222.0
-}
-```
-
-</TabItem>
-<TabItem value="histogram">
-
-```javascript
-{
-  "name": "duration_ms",
-  "sample_rate": 1,
-  "host": "my.host.com",
-  "timestamp": "2019-11-01T21:15:47+00:00",
-  "val": 2.6
+  "type": "gauge",
+  "value": 554222.0
 }
 ```
 
@@ -73,10 +82,14 @@ import TabItem from '@theme/TabItem';
 
 ```javascript
 {
+  "kind": "absolute",
   "name": "unique_users",
   "host": "my.host.com",
   "timestamp": "2019-11-01T21:15:47+00:00",
-  "val": 12
+  "type": "set",
+  "values": [
+    "127.0.0.1"
+  ]
 }
 ```
 
@@ -103,9 +116,27 @@ import Field from '@site/src/components/Field';
 
 ### counter
 
-A single value that can _only_ be incremented, it cannot be incremented.
+A single value that can _only_ be incremented or reset, it cannot be decremented.
 
 <Fields filters={false}>
+
+
+<Field
+  defaultValue={null}
+  enumValues={["absolute","incremental"]}
+  examples={["absolute","incremental"]}
+  name={"kind"}
+  path={"counter"}
+  required={true}
+  type={"string"}
+  >
+
+#### kind
+
+A metric could represent an already aggregated absolute value, or a relative (AKA delta) changes which occured between flush periods.
+
+
+</Field>
 
 
 <Field
@@ -138,7 +169,7 @@ The metric name.
 
 #### tags
 
-The metric name.
+The metric tags.
 
 
 </Field>
@@ -165,16 +196,128 @@ Time metric was created/ingested.
 <Field
   defaultValue={null}
   enumValues={null}
-  examples={[10.2]}
-  name={"val"}
+  examples={[{"type":"counter","value":10.2}]}
+  name={"value"}
   path={"counter"}
   required={true}
-  type={"double"}
+  type={"map"}
   >
 
-#### val
+#### value
 
-Amount to increment.
+Counter value.
+
+
+</Field>
+
+
+</Fields>
+
+</Field>
+
+
+<Field
+  defaultValue={null}
+  enumValues={null}
+  examples={null}
+  name={"distribution"}
+  path={null}
+  required={false}
+  type={"struct"}
+  >
+
+### distribution
+
+Also called a "timer". A[`distribution`](#distribution) represents the frequency distribution of a value. This is commonly used for timings, helping to understand quantiles, max, min, and other aggregations.
+
+<Fields filters={false}>
+
+
+<Field
+  defaultValue={null}
+  enumValues={["absolute","incremental"]}
+  examples={["absolute","incremental"]}
+  name={"kind"}
+  path={"distribution"}
+  required={true}
+  type={"string"}
+  >
+
+#### kind
+
+A metric could represent an already aggregated absolute value, or a relative (AKA delta) changes which occured between flush periods.
+
+
+</Field>
+
+
+<Field
+  defaultValue={null}
+  enumValues={null}
+  examples={["duration_ms"]}
+  name={"name"}
+  path={"distribution"}
+  required={true}
+  type={"string"}
+  >
+
+#### name
+
+The metric name.
+
+
+</Field>
+
+
+<Field
+  defaultValue={null}
+  enumValues={null}
+  examples={[{"host":"my.host.com"}]}
+  name={"tags"}
+  path={"distribution"}
+  required={true}
+  type={"map"}
+  >
+
+#### tags
+
+The metric tags.
+
+
+</Field>
+
+
+<Field
+  defaultValue={null}
+  enumValues={null}
+  examples={["2019-11-01T21:15:47+00:00"]}
+  name={"timestamp"}
+  path={"distribution"}
+  required={true}
+  type={"timestamp"}
+  >
+
+#### timestamp
+
+Time metric was created/ingested.
+
+
+</Field>
+
+
+<Field
+  defaultValue={null}
+  enumValues={null}
+  examples={[{"type":"distribution","values":[2.6],"sample_rates":[1]}]}
+  name={"value"}
+  path={"distribution"}
+  required={true}
+  type={"map"}
+  >
+
+#### value
+
+Distribution value.
 
 
 </Field>
@@ -197,24 +340,24 @@ Amount to increment.
 
 ### gauge
 
-A gauge represents a point-in-time value that can increase and decrease. Vector's internal gauge type represents changes to that value. Gauges should be used to track fluctuations in values, like current memory or CPU usage.
+A gauge represents a point-in-time value that can increase and decrease. Gauges should be used to track fluctuations in values, like current memory or CPU usage.
 
 <Fields filters={false}>
 
 
 <Field
   defaultValue={null}
-  enumValues={["plus","minus"]}
-  examples={["plus","minus"]}
-  name={"direction"}
+  enumValues={["absolute","incremental"]}
+  examples={["absolute","incremental"]}
+  name={"kind"}
   path={"gauge"}
   required={true}
   type={"string"}
   >
 
-#### direction
+#### kind
 
-The direction to increase or decrease the gauge value.
+A metric could represent an already aggregated absolute value, or a relative (AKA delta) changes which occured between flush periods.
 
 
 </Field>
@@ -250,7 +393,7 @@ The metric name.
 
 #### tags
 
-The metric name.
+The metric tags.
 
 
 </Field>
@@ -277,128 +420,16 @@ Time metric was created/ingested.
 <Field
   defaultValue={null}
   enumValues={null}
-  examples={[554222.0]}
-  name={"val"}
+  examples={[{"type":"gauge","value":554222.0}]}
+  name={"value"}
   path={"gauge"}
-  required={true}
-  type={"double"}
-  >
-
-#### val
-
-Specific value.
-
-
-</Field>
-
-
-</Fields>
-
-</Field>
-
-
-<Field
-  defaultValue={null}
-  enumValues={null}
-  examples={null}
-  name={"histogram"}
-  path={null}
-  required={false}
-  type={"struct"}
-  >
-
-### histogram
-
-Also called a "timer". A[`histogram`](#histogram) represents the frequency distribution of a value. This is commonly used for timings, helping to understand quantiles, max, min, and other aggregations.
-
-<Fields filters={false}>
-
-
-<Field
-  defaultValue={null}
-  enumValues={null}
-  examples={["duration_ms"]}
-  name={"name"}
-  path={"histogram"}
-  required={true}
-  type={"string"}
-  >
-
-#### name
-
-The metric name.
-
-
-</Field>
-
-
-<Field
-  defaultValue={null}
-  enumValues={null}
-  examples={[1]}
-  name={"sample_rate"}
-  path={"histogram"}
-  required={false}
-  type={"double"}
-  >
-
-#### sample_rate
-
-The bucket/distribution the metric is a part of.
-
-
-</Field>
-
-
-<Field
-  defaultValue={null}
-  enumValues={null}
-  examples={[{"host":"my.host.com"}]}
-  name={"tags"}
-  path={"histogram"}
   required={true}
   type={"map"}
   >
 
-#### tags
+#### value
 
-The metric name.
-
-
-</Field>
-
-
-<Field
-  defaultValue={null}
-  enumValues={null}
-  examples={["2019-11-01T21:15:47+00:00"]}
-  name={"timestamp"}
-  path={"histogram"}
-  required={true}
-  type={"timestamp"}
-  >
-
-#### timestamp
-
-Time metric was created/ingested.
-
-
-</Field>
-
-
-<Field
-  defaultValue={null}
-  enumValues={null}
-  examples={[2.6]}
-  name={"val"}
-  path={"histogram"}
-  required={true}
-  type={"double"}
-  >
-
-#### val
-
-Specific value.
+Gauge value.
 
 
 </Field>
@@ -424,6 +455,24 @@ Specific value.
 A set represents a count of unique values, AKA the cardinality.
 
 <Fields filters={false}>
+
+
+<Field
+  defaultValue={null}
+  enumValues={["absolute","incremental"]}
+  examples={["absolute","incremental"]}
+  name={"kind"}
+  path={"set"}
+  required={true}
+  type={"string"}
+  >
+
+#### kind
+
+A metric could represent an already aggregated absolute value, or a relative (AKA delta) changes which occured between flush periods.
+
+
+</Field>
 
 
 <Field
@@ -456,7 +505,7 @@ The metric name.
 
 #### tags
 
-The metric name.
+The metric tags.
 
 
 </Field>
@@ -483,16 +532,16 @@ Time metric was created/ingested.
 <Field
   defaultValue={null}
   enumValues={null}
-  examples={[12]}
-  name={"val"}
+  examples={[{"type":"set","values":["127.0.0.1"]}]}
+  name={"value"}
   path={"set"}
   required={true}
-  type={"double"}
+  type={"map"}
   >
 
-#### val
+#### value
 
-Specific value.
+Set value.
 
 
 </Field>

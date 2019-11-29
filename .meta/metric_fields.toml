@@ -2,7 +2,7 @@
 type = "struct"
 optional = true
 description = """\
-A single value that can _only_ be incremented, it cannot be incremented.\
+A single value that can _only_ be incremented or reset, it cannot be decremented.\
 """
 
 [metric_fields.counter.fields.name]
@@ -13,12 +13,12 @@ description = """\
 The metric name.\
 """
 
-[metric_fields.counter.fields.val]
-type = "double"
-examples = [10.2]
+[metric_fields.counter.fields.kind]
+type = "string"
+enum = ["absolute", "incremental"]
 optional = false
 description = """\
-Amount to increment.\
+A metric could represent an already aggregated absolute value, or a relative (AKA delta) changes which occured between flush periods.\
 """
 
 [metric_fields.counter.fields.tags]
@@ -26,7 +26,7 @@ type = "map"
 examples = [{host = "my.host.com"}]
 optional = false
 description = """\
-The metric name.\
+The metric tags.\
 """
 
 [metric_fields.counter.fields.timestamp]
@@ -37,16 +37,24 @@ description = """\
 Time metric was created/ingested.\
 """
 
-[metric_fields.histogram]
+[metric_fields.counter.fields.value]
+type = "map"
+examples = [{type = "counter", value = 10.2}]
+optional = false
+description = """\
+Counter value.\
+"""
+
+[metric_fields.distribution]
 type = "struct"
 optional = true
 description = """\
-Also called a "timer". A `histogram` represents the frequency distribution of a \
+Also called a "timer". A `distribution` represents the frequency distribution of a \
 value. This is commonly used for timings, helping to understand quantiles, max, \
 min, and other aggregations.\
 """
 
-[metric_fields.histogram.fields.name]
+[metric_fields.distribution.fields.name]
 type = "string"
 examples = ["duration_ms"]
 optional = false
@@ -54,31 +62,23 @@ description = """\
 The metric name.\
 """
 
-[metric_fields.histogram.fields.val]
-type = "double"
-examples = [2.6]
+[metric_fields.distribution.fields.kind]
+type = "string"
+enum = ["absolute", "incremental"]
 optional = false
 description = """\
-Specific value.\
+A metric could represent an already aggregated absolute value, or a relative (AKA delta) changes which occured between flush periods.\
 """
 
-[metric_fields.histogram.fields.sample_rate]
-type = "double"
-examples = [1]
-optional = true
-description = """\
-The bucket/distribution the metric is a part of.\
-"""
-
-[metric_fields.histogram.fields.tags]
+[metric_fields.distribution.fields.tags]
 type = "map"
 examples = [{host = "my.host.com"}]
 optional = false
 description = """\
-The metric name.\
+The metric tags.\
 """
 
-[metric_fields.histogram.fields.timestamp]
+[metric_fields.distribution.fields.timestamp]
 type = "timestamp"
 examples = ["2019-11-01T21:15:47.443232Z"]
 optional = false
@@ -86,21 +86,20 @@ description = """\
 Time metric was created/ingested.\
 """
 
+[metric_fields.distribution.fields.value]
+type = "map"
+examples = [{type = "distribution", values = [2.6], sample_rates = [1]}]
+optional = false
+description = """\
+Distribution value.\
+"""
+
 [metric_fields.gauge]
 type = "struct"
 optional = true
 description = """\
 A gauge represents a point-in-time value that can increase and decrease. \
-Vector's internal gauge type represents changes to that value. Gauges should be \
-used to track fluctuations in values, like current memory or CPU usage.\
-"""
-
-[metric_fields.gauge.fields.direction]
-type = "string"
-enum = ["plus", "minus"]
-optional = false
-description = """\
-The direction to increase or decrease the gauge value.\
+Gauges should be used to track fluctuations in values, like current memory or CPU usage.\
 """
 
 [metric_fields.gauge.fields.name]
@@ -111,12 +110,12 @@ description = """\
 The metric name.\
 """
 
-[metric_fields.gauge.fields.val]
-type = "double"
-examples = [554222.0]
+[metric_fields.gauge.fields.kind]
+type = "string"
+enum = ["absolute", "incremental"]
 optional = false
 description = """\
-Specific value.\
+A metric could represent an already aggregated absolute value, or a relative (AKA delta) changes which occured between flush periods.\
 """
 
 [metric_fields.gauge.fields.tags]
@@ -124,7 +123,7 @@ type = "map"
 examples = [{host = "my.host.com"}]
 optional = false
 description = """\
-The metric name.\
+The metric tags.\
 """
 
 [metric_fields.gauge.fields.timestamp]
@@ -133,6 +132,14 @@ examples = ["2019-11-01T21:15:47.443232Z"]
 optional = false
 description = """\
 Time metric was created/ingested.\
+"""
+
+[metric_fields.gauge.fields.value]
+type = "map"
+examples = [{type = "gauge", value = 554222.0}]
+optional = false
+description = """\
+Gauge value.\
 """
 
 [metric_fields.set]
@@ -150,12 +157,12 @@ description = """\
 The metric name.\
 """
 
-[metric_fields.set.fields.val]
-type = "double"
-examples = [12]
+[metric_fields.set.fields.kind]
+type = "string"
+enum = ["absolute", "incremental"]
 optional = false
 description = """\
-Specific value.\
+A metric could represent an already aggregated absolute value, or a relative (AKA delta) changes which occured between flush periods.\
 """
 
 [metric_fields.set.fields.tags]
@@ -163,7 +170,7 @@ type = "map"
 examples = [{host = "my.host.com"}]
 optional = false
 description = """\
-The metric name.\
+The metric tags.\
 """
 
 [metric_fields.set.fields.timestamp]
@@ -172,4 +179,12 @@ examples = ["2019-11-01T21:15:47.443232Z"]
 optional = false
 description = """\
 Time metric was created/ingested.\
+"""
+
+[metric_fields.set.fields.value]
+type = "map"
+examples = [{type = "set", values = ["127.0.0.1"]}]
+optional = false
+description = """\
+Set value.\
 """
