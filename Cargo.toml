@@ -134,6 +134,7 @@ inventory = "0.1"
 maxminddb = "0.13.0"
 strip-ansi-escapes = "0.1.0"
 colored = "1.9"
+evmap = { version = "7", features = ["bytes"] } 
 
 [target.'cfg(unix)'.dependencies]
 atty = "0.2"
