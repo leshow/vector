@@ -38,6 +38,7 @@ scopes:
   # transforms
   - add_fields transform
   - add_tags transform
+  - aws_ec2_metadata transform
   - coercer transform
   - field_filter transform
   - grok_parser transform

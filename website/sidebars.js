@@ -145,6 +145,8 @@ module.exports = {
             
               "reference/transforms/add_tags",
             
+              "reference/transforms/aws_ec2_metadata",
+            
               "reference/transforms/coercer",
             
               "reference/transforms/field_filter",
