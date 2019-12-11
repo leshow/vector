@@ -11,9 +11,9 @@ use futures::{
 };
 use lapin_futures::{
     auth::SASLMechanism,
-    options::{BasicPublishOptions, QueueDeclareOptions},
+    options::{BasicPublishOptions, ExchangeDeclareOptions},
     types::FieldTable,
-    BasicProperties, Client, ConfirmationFuture, ConnectionProperties,
+    BasicProperties, Client, ConfirmationFuture, ConnectionProperties, ExchangeKind,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -56,13 +56,28 @@ impl Default for ConnectionPropertiesDef {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, Debug)]
-pub struct QueueDeclareOptionsDef {
-    pub passive: bool,
-    pub durable: bool,
-    pub exclusive: bool,
-    pub auto_delete: bool,
-    pub nowait: bool,
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ExchangeDeclareKindDef {
+    Direct,
+    Fanout,
+    Headers,
+    Topic,
+}
+
+fn default_exchange_declare_kind() -> ExchangeDeclareKindDef {
+    ExchangeDeclareKindDef::Direct
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ExchangeDeclareOptionsDef {
+    #[serde(default = "default_exchange_declare_kind")]
+    pub kind: ExchangeDeclareKindDef,
+    pub passive: Option<bool>,
+    pub durable: Option<bool>,
+    pub auto_delete: Option<bool>,
+    pub internal: Option<bool>,
+    pub nowait: Option<bool>,
+    pub field_table: FieldTable,
 }
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
@@ -78,9 +93,8 @@ pub struct RabbitMQSinkConfig {
     connection_properties: ConnectionPropertiesDef,
     encoding: Encoding,
     exchange: String,
-    field_table: FieldTable,
-    queue_name: String,
-    queue_declare_options: QueueDeclareOptionsDef,
+    routing_key: String,
+    exchange_declare_options: Option<ExchangeDeclareOptionsDef>,
 }
 
 impl RabbitMQSinkConfig {
@@ -94,19 +108,35 @@ impl RabbitMQSinkConfig {
         }
     }
 
-    pub fn queue_declare_options(&self) -> QueueDeclareOptions {
-        QueueDeclareOptions {
-            passive: self.queue_declare_options.passive,
-            durable: self.queue_declare_options.durable,
-            exclusive: self.queue_declare_options.exclusive,
-            auto_delete: self.queue_declare_options.auto_delete,
-            nowait: self.queue_declare_options.nowait,
+    pub fn exchange_declare_options(
+        &self,
+    ) -> Option<(ExchangeKind, ExchangeDeclareOptions, FieldTable)> {
+        if let Some(opts) = &self.exchange_declare_options {
+            let kind = match &opts.kind {
+                ExchangeDeclareKindDef::Direct => ExchangeKind::Direct,
+                ExchangeDeclareKindDef::Fanout => ExchangeKind::Fanout,
+                ExchangeDeclareKindDef::Headers => ExchangeKind::Headers,
+                ExchangeDeclareKindDef::Topic => ExchangeKind::Topic,
+            };
+            Some((
+                kind,
+                ExchangeDeclareOptions {
+                    passive: opts.passive.unwrap_or(false),
+                    durable: opts.durable.unwrap_or(true),
+                    auto_delete: opts.auto_delete.unwrap_or(false),
+                    internal: opts.internal.unwrap_or(false),
+                    nowait: opts.nowait.unwrap_or(false),
+                },
+                opts.field_table.clone(),
+            ))
+        } else {
+            None
         }
     }
 
     pub fn basic_publish_options(&self) -> BasicPublishOptions {
         BasicPublishOptions {
-            immediate: self.basic_publish_options.mandatory,
+            immediate: self.basic_publish_options.immediate,
             mandatory: self.basic_publish_options.mandatory,
         }
     }
@@ -127,7 +157,7 @@ pub struct RabbitMQSink {
     exchange: String,
     in_flight: FuturesUnordered<MetadataFuture<ConfirmationFuture<()>, usize>>,
     seqno: usize,
-    queue_name: String,
+    routing_key: String,
     pending_acks: HashSet<usize>,
 }
 
@@ -136,13 +166,11 @@ impl RabbitMQSink {
         let channel = Client::connect(&config.addr, config.connection_properties())
             .and_then(|client| client.create_channel())
             .wait()?;
-        channel
-            .queue_declare(
-                &config.queue_name,
-                config.queue_declare_options(),
-                config.field_table.clone(),
-            )
-            .wait()?;
+        if let Some((kind, opts, field_table)) = config.exchange_declare_options() {
+            channel
+                .exchange_declare(&config.exchange, kind, opts, field_table)
+                .wait()?;
+        }
         Ok(RabbitMQSink {
             acker,
             basic_publish_options: config.basic_publish_options(),
@@ -151,7 +179,7 @@ impl RabbitMQSink {
             exchange: config.exchange,
             in_flight: FuturesUnordered::new(),
             seqno: 0,
-            queue_name: config.queue_name,
+            routing_key: config.routing_key,
             pending_acks: HashSet::new(),
         })
     }
@@ -186,7 +214,7 @@ impl Sink for RabbitMQSink {
         let payload = encode_event(&item, &self.encoding);
         let future = self.channel.basic_publish(
             &self.exchange,
-            &self.queue_name,
+            &self.routing_key,
             payload,
             self.basic_publish_options.clone(),
             BasicProperties::default(),
@@ -292,7 +320,7 @@ mod integration_test {
             exchange: String::from(""),
             field_table: FieldTable::default(),
             queue_name: queue_name.clone(),
-            queue_declare_options: QueueDeclareOptionsDef::default(),
+            queue_declare_options: ExchangeDeclareOptionsDef::default(),
         };
         // publish messages to test rabbit queue
         let (acker, ack_counter) = Acker::new_for_testing();
@@ -312,7 +340,7 @@ mod integration_test {
         let consumer = channel
             .queue_declare(
                 &queue_name,
-                QueueDeclareOptions::default(),
+                ExchangeDeclareOptions::default(),
                 FieldTable::default(),
             )
             .and_then(|queue| {
