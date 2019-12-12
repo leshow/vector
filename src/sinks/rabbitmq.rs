@@ -80,6 +80,20 @@ pub struct ExchangeDeclareOptionsDef {
     pub field_table: FieldTable,
 }
 
+impl Default for ExchangeDeclareOptionsDef {
+    fn default() -> Self {
+        ExchangeDeclareOptionsDef {
+            kind: ExchangeDeclareKindDef::Direct,
+            passive: Some(false),
+            durable: Some(true),
+            auto_delete: Some(false),
+            internal: Some(false),
+            nowait: Some(false),
+            field_table: FieldTable::default(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
 pub struct BasicPublishOptionsDef {
     pub mandatory: bool,
@@ -305,30 +319,30 @@ mod tests {
 mod integration_test {
     use super::*;
     use crate::test_util::{block_on, random_lines_with_stream, random_string};
-    use lapin_futures::options::BasicConsumeOptions;
+    use lapin_futures::options::{BasicConsumeOptions, QueueBindOptions, QueueDeclareOptions};
     use std::{collections::HashSet, iter::FromIterator};
 
     #[test]
     fn publish_messages() {
-        let queue_name = format!("test-{}", random_string(10));
+        let routing_key = format!("test-{}", random_string(10));
+        let exchange_name = format!("test-exchange-{}", random_string(10));
+        let queue_name = format!("test-queue-{}", random_string(10));
         let addr = String::from("amqp://127.0.0.1:5672/%2f");
+
         let config = RabbitMQSinkConfig {
             addr: addr.clone(),
             basic_publish_options: BasicPublishOptionsDef::default(),
             connection_properties: ConnectionPropertiesDef::default(),
             encoding: Encoding::Text,
-            exchange: String::from(""),
-            field_table: FieldTable::default(),
-            queue_name: queue_name.clone(),
-            queue_declare_options: ExchangeDeclareOptionsDef::default(),
+            exchange: exchange_name.clone(),
+            routing_key: routing_key.clone(),
+            exchange_declare_options: Some(ExchangeDeclareOptionsDef::default()),
         };
         // publish messages to test rabbit queue
         let (acker, ack_counter) = Acker::new_for_testing();
         let rabbit = RabbitMQSink::new(config, acker).unwrap();
         let number_of_events = 1000;
         let (input, events) = random_lines_with_stream(100, number_of_events);
-        let pump = rabbit.send_all(events);
-        block_on(pump).unwrap();
         let mut messages: HashSet<String> = HashSet::from_iter(input);
 
         // create consumer to check the existence of the previously pushed messages
@@ -337,13 +351,23 @@ mod integration_test {
             .wait()
             .unwrap();
         let consumer_name = format!("consumer-{}", random_string(5));
-        let consumer = channel
+        let queue = channel
             .queue_declare(
                 &queue_name,
-                ExchangeDeclareOptions::default(),
+                QueueDeclareOptions::default(),
                 FieldTable::default(),
             )
-            .and_then(|queue| {
+            .wait()
+            .unwrap();
+        let consumer = channel
+            .queue_bind(
+                &queue_name,
+                &exchange_name,
+                &routing_key,
+                QueueBindOptions::default(),
+                FieldTable::default(),
+            )
+            .and_then(|()| {
                 channel.basic_consume(
                     &queue,
                     &consumer_name,
@@ -353,6 +377,10 @@ mod integration_test {
             })
             .wait()
             .unwrap();
+
+        let pump = rabbit.send_all(events);
+        let _ = block_on(pump).unwrap();
+
         // check that all messages exist in rabbitmq
         let mut counter = 0;
         for item in consumer.wait() {
