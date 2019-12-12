@@ -1,0 +1,47 @@
+[sinks.rabbitmq]
+beta = true
+buffer = true
+common = true
+delivery_guarantee = "at-least-once"
+egress_method = "streaming"
+encodings = ["json", "text"]
+function_category = "transmit"
+healthcheck = true
+input_types = ["log"]
+service_provider = "Pivotal"
+write_to_description = "[RabbitMQ][urls.rabbitmq] via the [AMQP 0.91 protocol][urls.amqp_091]."
+
+[sinks.rabbitmq.options.address]
+type = "string"
+common = true
+examples = ["127.0.0.1:5672/", "amqp://guest:guest@127.0.0.1:5672/"]
+null = false
+description = "The address of a target RabbitMQ broker."
+
+[sinks.rabbitmq.options.exchange]
+type = "string"
+common = true
+examples = ["foo-exchange"]
+null = false
+description = "The exchange to publish messages to."
+
+[sinks.rabbitmq.options.routing_key]
+type = "string"
+common = true
+examples = ["bar-key"]
+null = false
+description = "A routing key for messages published to the target exchange."
+
+[sinks.rabbitmq.options.mandatory]
+type = "bool"
+common = true
+null = true
+default = false
+description = "Whether to set the mandatory flag for published messages."
+
+[sinks.rabbitmq.options.immediate]
+type = "bool"
+common = true
+null = true
+default = false
+description = "Whether to set the immediate flag for published messages."

@@ -37,23 +37,11 @@ impl SASLMechanismDef {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct ConnectionPropertiesDef {
-    pub mechanism: SASLMechanismDef,
-    pub locale: String,
+    pub authentication_mechanism: Option<SASLMechanismDef>,
+    pub locale: Option<String>,
     pub client_properties: FieldTable,
-    pub max_executor_threads: usize,
-}
-
-impl Default for ConnectionPropertiesDef {
-    fn default() -> ConnectionPropertiesDef {
-        ConnectionPropertiesDef {
-            mechanism: SASLMechanismDef::Plain,
-            locale: "en_US".into(),
-            client_properties: FieldTable::default(),
-            max_executor_threads: 1,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -68,7 +56,13 @@ fn default_exchange_declare_kind() -> ExchangeDeclareKindDef {
     ExchangeDeclareKindDef::Direct
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+impl Default for ExchangeDeclareKindDef {
+    fn default() -> Self {
+        default_exchange_declare_kind()
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct ExchangeDeclareOptionsDef {
     #[serde(default = "default_exchange_declare_kind")]
     pub kind: ExchangeDeclareKindDef,
@@ -80,52 +74,42 @@ pub struct ExchangeDeclareOptionsDef {
     pub field_table: FieldTable,
 }
 
-impl Default for ExchangeDeclareOptionsDef {
-    fn default() -> Self {
-        ExchangeDeclareOptionsDef {
-            kind: ExchangeDeclareKindDef::Direct,
-            passive: Some(false),
-            durable: Some(true),
-            auto_delete: Some(false),
-            internal: Some(false),
-            nowait: Some(false),
-            field_table: FieldTable::default(),
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
 pub struct BasicPublishOptionsDef {
-    pub mandatory: bool,
-    pub immediate: bool,
+    pub mandatory: Option<bool>,
+    pub immediate: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RabbitMQSinkConfig {
     addr: String,
+    #[serde(flatten)]
     basic_publish_options: BasicPublishOptionsDef,
+    #[serde(flatten)]
     connection_properties: ConnectionPropertiesDef,
     encoding: Encoding,
     exchange: String,
     routing_key: String,
-    exchange_declare_options: Option<ExchangeDeclareOptionsDef>,
+    exchange_declare: Option<ExchangeDeclareOptionsDef>,
 }
 
 impl RabbitMQSinkConfig {
     pub fn connection_properties(&self) -> ConnectionProperties {
-        ConnectionProperties {
-            mechanism: self.connection_properties.mechanism.to_sasl_mechanism(),
-            locale: self.connection_properties.locale.clone(),
-            client_properties: self.connection_properties.client_properties.clone(),
-            executor: None,
-            max_executor_threads: self.connection_properties.max_executor_threads,
+        let mut props = ConnectionProperties::default();
+        if let Some(mech) = &self.connection_properties.authentication_mechanism {
+            props.mechanism = mech.to_sasl_mechanism();
         }
+        if let Some(locale) = &self.connection_properties.locale {
+            props.locale = locale.clone();
+        }
+        props.client_properties = self.connection_properties.client_properties.clone();
+        props
     }
 
     pub fn exchange_declare_options(
         &self,
     ) -> Option<(ExchangeKind, ExchangeDeclareOptions, FieldTable)> {
-        if let Some(opts) = &self.exchange_declare_options {
+        if let Some(opts) = &self.exchange_declare {
             let kind = match &opts.kind {
                 ExchangeDeclareKindDef::Direct => ExchangeKind::Direct,
                 ExchangeDeclareKindDef::Fanout => ExchangeKind::Fanout,
@@ -150,8 +134,8 @@ impl RabbitMQSinkConfig {
 
     pub fn basic_publish_options(&self) -> BasicPublishOptions {
         BasicPublishOptions {
-            immediate: self.basic_publish_options.immediate,
-            mandatory: self.basic_publish_options.mandatory,
+            immediate: self.basic_publish_options.immediate.unwrap_or(false),
+            mandatory: self.basic_publish_options.mandatory.unwrap_or(false),
         }
     }
 }
@@ -336,7 +320,7 @@ mod integration_test {
             encoding: Encoding::Text,
             exchange: exchange_name.clone(),
             routing_key: routing_key.clone(),
-            exchange_declare_options: Some(ExchangeDeclareOptionsDef::default()),
+            exchange_declare: Some(ExchangeDeclareOptionsDef::default()),
         };
         // publish messages to test rabbit queue
         let (acker, ack_counter) = Acker::new_for_testing();
