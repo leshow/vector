@@ -3432,16 +3432,16 @@ end
   # * optional
   # * default: false
   # * type: bool
-  immediate = true
   immediate = false
+  immediate = true
 
   # Whether to set the mandatory flag for published messages.
   # 
   # * optional
   # * default: false
   # * type: bool
-  mandatory = true
   mandatory = false
+  mandatory = true
 
   # The SASL mechanism to use for authentication.
   # 
@@ -3517,8 +3517,8 @@ end
     # * optional
     # * default: false
     # * type: bool
-    auto_delete = true
     auto_delete = false
+    auto_delete = true
 
     # Whether to set the durable flag for the declared exchange.
     # 
@@ -3533,8 +3533,8 @@ end
     # * optional
     # * default: false
     # * type: bool
-    internal = true
     internal = false
+    internal = true
 
     # The kind of exchange to declare.
     # 
@@ -3552,16 +3552,16 @@ end
     # * optional
     # * default: false
     # * type: bool
-    nowait = true
     nowait = false
+    nowait = true
 
     # Whether to set the passive flag for the declared exchange.
     # 
     # * optional
     # * default: false
     # * type: bool
-    passive = true
     passive = false
+    passive = true
 
 
     [sinks.rabbitmq.exchange_declare.field_table]

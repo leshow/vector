@@ -3,6 +3,7 @@ delivery_guarantee: "at-least-once"
 event_types: ["log"]
 issues_url: https://github.com/timberio/vector/issues?q=is%3Aopen+is%3Aissue+label%3A%22sink%3A+rabbitmq%22
 operating_systems: ["linux","macos","windows"]
+posts_path: /blog/tags/sink-rabbitmq
 sidebar_label: "rabbitmq|[\"log\"]"
 source_url: https://github.com/timberio/vector/tree/master/src/sinks/rabbitmq.rs
 status: "beta"
@@ -54,8 +55,8 @@ import CodeHeader from '@site/src/components/CodeHeader';
   
   # OPTIONAL - General
   exchange = "foo-exchange" # example, no default
-  immediate = true # default
-  mandatory = true # default
+  immediate = false # default
+  mandatory = false # default
 ```
 
 </TabItem>
@@ -77,8 +78,8 @@ import CodeHeader from '@site/src/components/CodeHeader';
   # OPTIONAL - General
   exchange = "foo-exchange" # example, no default
   healthcheck = true # default
-  immediate = true # default
-  mandatory = true # default
+  immediate = false # default
+  mandatory = false # default
   sasl_mechanism = "plain" # default, enum
   
   # OPTIONAL - Buffer
@@ -91,12 +92,12 @@ import CodeHeader from '@site/src/components/CodeHeader';
   # OPTIONAL - Exchange declare
   [sinks.my_sink_id.exchange_declare]
     # OPTIONAL - General
-    auto_delete = true # default
+    auto_delete = false # default
     durable = true # default
-    internal = true # default
+    internal = false # default
     kind = "direct" # default, enum
-    nowait = true # default
-    passive = true # default
+    nowait = false # default
+    passive = false # default
     
     # OPTIONAL - Field table
     [sinks.my_sink_id.exchange_declare.field_table]
@@ -330,7 +331,7 @@ Optionally declare an exchange once a connection is established.
   common={false}
   defaultValue={false}
   enumValues={null}
-  examples={[true,false]}
+  examples={[false,true]}
   name={"auto_delete"}
   nullable={true}
   path={"exchange_declare"}
@@ -426,7 +427,7 @@ The name of the field to add. Accepts all [supported types][docs.configuration#t
   common={false}
   defaultValue={false}
   enumValues={null}
-  examples={[true,false]}
+  examples={[false,true]}
   name={"internal"}
   nullable={true}
   path={"exchange_declare"}
@@ -472,7 +473,7 @@ The kind of exchange to declare.
   common={false}
   defaultValue={false}
   enumValues={null}
-  examples={[true,false]}
+  examples={[false,true]}
   name={"nowait"}
   nullable={true}
   path={"exchange_declare"}
@@ -495,7 +496,7 @@ Whether to set the nowait flag for the declared exchange.
   common={false}
   defaultValue={false}
   enumValues={null}
-  examples={[true,false]}
+  examples={[false,true]}
   name={"passive"}
   nullable={true}
   path={"exchange_declare"}
@@ -546,7 +547,7 @@ Enables/disables the sink healthcheck upon start. See [Health Checks](#health-ch
   common={true}
   defaultValue={false}
   enumValues={null}
-  examples={[true,false]}
+  examples={[false,true]}
   name={"immediate"}
   nullable={true}
   path={null}
@@ -569,7 +570,7 @@ Whether to set the immediate flag for published messages.
   common={true}
   defaultValue={false}
   enumValues={null}
-  examples={[true,false]}
+  examples={[false,true]}
   name={"mandatory"}
   nullable={true}
   path={null}
