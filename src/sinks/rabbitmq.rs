@@ -16,35 +16,33 @@ use lapin_futures::{
     BasicProperties, Client, ConfirmationFuture, ConnectionProperties, ExchangeKind,
 };
 use serde::{Deserialize, Serialize};
+use snafu::Snafu;
 use std::collections::HashSet;
 
+#[derive(Debug, Snafu)]
+enum BuildError {
+    #[snafu(display("Unable to declare default exchange, please provide a non-empty 'exchange'"))]
+    DeclareMissingExchange,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
 pub enum SASLMechanismDef {
-    AMQPlain,
     External,
     Plain,
-    RabbitCrDemo,
 }
 
 impl SASLMechanismDef {
     pub fn to_sasl_mechanism(&self) -> SASLMechanism {
         match &self {
-            SASLMechanismDef::AMQPlain => SASLMechanism::AMQPlain,
             SASLMechanismDef::External => SASLMechanism::External,
             SASLMechanismDef::Plain => SASLMechanism::Plain,
-            SASLMechanismDef::RabbitCrDemo => SASLMechanism::RabbitCrDemo,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug)]
-pub struct ConnectionPropertiesDef {
-    pub authentication_mechanism: Option<SASLMechanismDef>,
-    pub locale: Option<String>,
-    pub client_properties: FieldTable,
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
 pub enum ExchangeDeclareKindDef {
     Direct,
     Fanout,
@@ -80,29 +78,25 @@ pub struct BasicPublishOptionsDef {
     pub immediate: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct RabbitMQSinkConfig {
-    addr: String,
+    pub addr: String,
     #[serde(flatten)]
-    basic_publish_options: BasicPublishOptionsDef,
+    pub sasl_mechanism: Option<SASLMechanismDef>,
     #[serde(flatten)]
-    connection_properties: ConnectionPropertiesDef,
-    encoding: Encoding,
-    exchange: String,
-    routing_key: String,
-    exchange_declare: Option<ExchangeDeclareOptionsDef>,
+    pub basic_publish_options: BasicPublishOptionsDef,
+    pub encoding: Encoding,
+    pub exchange: Option<String>,
+    pub routing_key: String,
+    pub exchange_declare: Option<ExchangeDeclareOptionsDef>,
 }
 
 impl RabbitMQSinkConfig {
     pub fn connection_properties(&self) -> ConnectionProperties {
         let mut props = ConnectionProperties::default();
-        if let Some(mech) = &self.connection_properties.authentication_mechanism {
+        if let Some(mech) = &self.sasl_mechanism {
             props.mechanism = mech.to_sasl_mechanism();
         }
-        if let Some(locale) = &self.connection_properties.locale {
-            props.locale = locale.clone();
-        }
-        props.client_properties = self.connection_properties.client_properties.clone();
         props
     }
 
@@ -140,9 +134,11 @@ impl RabbitMQSinkConfig {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Clone)]
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Clone, Derivative)]
 #[serde(rename_all = "snake_case")]
+#[derivative(Default)]
 pub enum Encoding {
+    #[derivative(Default)]
     Text,
     Json,
 }
@@ -165,16 +161,20 @@ impl RabbitMQSink {
             .and_then(|client| client.create_channel())
             .wait()?;
         if let Some((kind, opts, field_table)) = config.exchange_declare_options() {
-            channel
-                .exchange_declare(&config.exchange, kind, opts, field_table)
-                .wait()?;
+            if let Some(exchange) = &config.exchange {
+                channel
+                    .exchange_declare(&exchange, kind, opts, field_table)
+                    .wait()?;
+            } else {
+                return Err(Box::new(BuildError::DeclareMissingExchange));
+            }
         }
         Ok(RabbitMQSink {
             acker,
             basic_publish_options: config.basic_publish_options(),
             channel,
             encoding: config.encoding,
-            exchange: config.exchange,
+            exchange: config.exchange.unwrap_or("".to_owned()),
             in_flight: FuturesUnordered::new(),
             seqno: 0,
             routing_key: config.routing_key,
@@ -184,7 +184,7 @@ impl RabbitMQSink {
 }
 
 inventory::submit! {
-    SinkDescription::new_without_default::<RabbitMQSinkConfig>("rabbitmq")
+    SinkDescription::new::<RabbitMQSinkConfig>("rabbitmq")
 }
 
 #[typetag::serde(name = "rabbitmq")]
@@ -315,10 +315,10 @@ mod integration_test {
 
         let config = RabbitMQSinkConfig {
             addr: addr.clone(),
+            sasl_mechanism: None,
             basic_publish_options: BasicPublishOptionsDef::default(),
-            connection_properties: ConnectionPropertiesDef::default(),
             encoding: Encoding::Text,
-            exchange: exchange_name.clone(),
+            exchange: Some(exchange_name.clone()),
             routing_key: routing_key.clone(),
             exchange_declare: Some(ExchangeDeclareOptionsDef::default()),
         };
